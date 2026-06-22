@@ -45,8 +45,9 @@ Open `.env` and fill in your connection details:
 ### 3. Push Database Schema
 Use Drizzle Kit to create tables on your Neon PostgreSQL instance:
 ```bash
-bunx drizzle-kit push
+bun run db:push
 ```
+*(Or run the direct CLI command: `bunx drizzle-kit push:pg`)*
 
 ### 4. Setup Rclone Daemon (Windows)
 Run the automated PowerShell script in an Administrator console to download, unpack, configure, and boot Rclone:
