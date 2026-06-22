@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../lib/api";
+import { motion } from "framer-motion";
 
 export const Route = createFileRoute("/settings")({
   component: SettingsPage,
@@ -49,53 +50,58 @@ function SettingsPage() {
   };
 
   return (
-    <div className="space-y-8">
+    <motion.div
+      initial={{ opacity: 0, y: 15 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: "easeOut" }}
+      className="space-y-8"
+    >
       {/* Page Header */}
       <div>
-        <h2 className="text-xl font-bold tracking-tight text-white m-0">System Configuration</h2>
-        <p className="text-xs text-gray-500 m-0 mt-1">Telemetry, daemon state, and configuration metrics for Symbiosis.</p>
+        <h2 className="text-xl font-bold tracking-tight text-slate-800 dark:text-white m-0">System Configuration</h2>
+        <p className="text-xs text-slate-500 dark:text-gray-500 m-0 mt-1">Telemetry, daemon state, and configuration metrics for Symbiosis.</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Rclone Daemon Health */}
-        <div className="glass-card space-y-6">
-          <h3 className="text-sm font-semibold text-white tracking-wide uppercase m-0 flex items-center gap-2 border-b border-solid border-white/5 pb-4">
+        <div className="bg-white dark:bg-brand-card/95 border border-solid border-slate-200/80 dark:border-white/5 rounded-xl p-6 shadow-sm dark:shadow-none space-y-6 transition-colors duration-300">
+          <h3 className="text-sm font-semibold text-slate-800 dark:text-white tracking-wide uppercase m-0 flex items-center gap-2 border-b border-solid border-slate-200/80 dark:border-white/5 pb-4">
             <span className="i-ri-server-line text-violet-400"></span>
             Rclone Daemon Status
           </h3>
 
           {healthLoading ? (
             <div className="space-y-3 py-2">
-              <div className="h-4 bg-white/5 rounded animate-pulse"></div>
-              <div className="h-4 bg-white/5 rounded animate-pulse"></div>
-              <div className="h-4 bg-white/5 rounded animate-pulse"></div>
+              <div className="h-4 bg-slate-100 dark:bg-white/5 rounded animate-pulse"></div>
+              <div className="h-4 bg-slate-100 dark:bg-white/5 rounded animate-pulse"></div>
+              <div className="h-4 bg-slate-100 dark:bg-white/5 rounded animate-pulse"></div>
             </div>
           ) : healthError || !health ? (
-            <div className="bg-red-500/10 border border-solid border-red-500/20 text-red-400 text-xs rounded-lg p-4">
+            <div className="bg-red-500/10 border border-solid border-red-500/20 text-red-600 dark:text-red-400 text-xs rounded-lg p-4">
               Failed to connect to the Symbiosis Stream Engine. Is the Hono server running on port 3000?
             </div>
           ) : (
             <div className="space-y-4 text-xs">
-              <div className="flex justify-between border-b border-solid border-white/3 pb-2.5">
-                <span className="text-gray-500">Connection Health</span>
-                <span className={`font-semibold flex items-center gap-1.5 ${health.rclone.healthy ? "text-green-400" : "text-red-400"}`}>
-                  <span className={`w-1.5 h-1.5 rounded-full ${health.rclone.healthy ? "bg-green-400" : "bg-red-400 animate-pulse"}`}></span>
+              <div className="flex justify-between border-b border-solid border-slate-100 dark:border-white/3 pb-2.5">
+                <span className="text-slate-500 dark:text-gray-500">Connection Health</span>
+                <span className={`font-semibold flex items-center gap-1.5 ${health.rclone.healthy ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${health.rclone.healthy ? "bg-green-500 dark:bg-green-400" : "bg-red-500 dark:bg-red-400 animate-pulse"}`}></span>
                   {health.rclone.healthy ? "ONLINE" : "UNHEALTHY / TIMEOUT"}
                 </span>
               </div>
 
-              <div className="flex justify-between border-b border-solid border-white/3 pb-2.5">
-                <span className="text-gray-500">RC Latency</span>
-                <span className="font-mono text-gray-300">{health.rclone.latencyMs}ms</span>
+              <div className="flex justify-between border-b border-solid border-slate-100 dark:border-white/3 pb-2.5">
+                <span className="text-slate-500 dark:text-gray-500">RC Latency</span>
+                <span className="font-mono text-slate-700 dark:text-gray-300">{health.rclone.latencyMs}ms</span>
               </div>
 
-              <div className="flex justify-between border-b border-solid border-white/3 pb-2.5">
-                <span className="text-gray-500">Proxy Uptime</span>
-                <span className="font-mono text-gray-300">{formatUptime(health.uptime)}</span>
+              <div className="flex justify-between border-b border-solid border-slate-100 dark:border-white/3 pb-2.5">
+                <span className="text-slate-500 dark:text-gray-500">Proxy Uptime</span>
+                <span className="font-mono text-slate-700 dark:text-gray-300">{formatUptime(health.uptime)}</span>
               </div>
 
               {health.rclone.error && (
-                <div className="p-3 bg-red-950/20 border border-solid border-red-500/20 text-red-400 rounded-lg font-mono text-[10px]">
+                <div className="p-3 bg-red-50 dark:bg-red-950/20 border border-solid border-red-200 dark:border-red-500/20 text-red-600 dark:text-red-400 rounded-lg font-mono text-[10px]">
                   <strong>Daemon Error:</strong> {health.rclone.error}
                 </div>
               )}
@@ -104,26 +110,26 @@ function SettingsPage() {
         </div>
 
         {/* Local Proxy Engine Settings */}
-        <div className="glass-card space-y-6">
-          <h3 className="text-sm font-semibold text-white tracking-wide uppercase m-0 flex items-center gap-2 border-b border-solid border-white/5 pb-4">
+        <div className="bg-white dark:bg-brand-card/95 border border-solid border-slate-200/80 dark:border-white/5 rounded-xl p-6 shadow-sm dark:shadow-none space-y-6 transition-colors duration-300">
+          <h3 className="text-sm font-semibold text-slate-800 dark:text-white tracking-wide uppercase m-0 flex items-center gap-2 border-b border-solid border-slate-200/80 dark:border-white/5 pb-4">
             <span className="i-ri-equalizer-line text-violet-400"></span>
             Proxy Configuration
           </h3>
 
           <div className="space-y-4 text-xs">
-            <div className="flex justify-between border-b border-solid border-white/3 pb-2.5">
-              <span className="text-gray-500">Server Port</span>
-              <span className="font-mono text-gray-300">3000</span>
+            <div className="flex justify-between border-b border-solid border-slate-100 dark:border-white/3 pb-2.5">
+              <span className="text-slate-500 dark:text-gray-500">Server Port</span>
+              <span className="font-mono text-slate-700 dark:text-gray-300">3000</span>
             </div>
 
-            <div className="flex justify-between border-b border-solid border-white/3 pb-2.5">
-              <span className="text-gray-500">Payload Limits</span>
-              <span className="font-mono text-gray-300">5.00 GB (Bypassed Bun Buffer)</span>
+            <div className="flex justify-between border-b border-solid border-slate-100 dark:border-white/3 pb-2.5">
+              <span className="text-slate-500 dark:text-gray-500">Payload Limits</span>
+              <span className="font-mono text-slate-700 dark:text-gray-300">5.00 GB (Bypassed Bun Buffer)</span>
             </div>
 
-            <div className="flex justify-between border-b border-solid border-white/3 pb-2.5">
-              <span className="text-gray-500">Registered Remotes</span>
-              <span className="font-mono text-gray-300">
+            <div className="flex justify-between border-b border-solid border-slate-100 dark:border-white/3 pb-2.5">
+              <span className="text-slate-500 dark:text-gray-500">Registered Remotes</span>
+              <span className="font-mono text-slate-700 dark:text-gray-300">
                 {accountsLoading ? "..." : accountsList?.length ?? 0}
               </span>
             </div>
@@ -132,32 +138,37 @@ function SettingsPage() {
       </div>
 
       {/* Rclone Remote Mounts list */}
-      <div className="glass-card space-y-4">
-        <h3 className="text-sm font-semibold text-white tracking-wide uppercase m-0 flex items-center gap-2 border-b border-solid border-white/5 pb-4">
+      <div className="bg-white dark:bg-brand-card/95 border border-solid border-slate-200/80 dark:border-white/5 rounded-xl p-6 shadow-sm dark:shadow-none space-y-4 transition-colors duration-300">
+        <h3 className="text-sm font-semibold text-slate-800 dark:text-white tracking-wide uppercase m-0 flex items-center gap-2 border-b border-solid border-slate-200/80 dark:border-white/5 pb-4">
           <span className="i-ri-git-repository-line text-violet-400"></span>
           Active Remote Connections
         </h3>
 
         {accountsLoading ? (
-          <div className="h-10 bg-white/5 rounded animate-pulse"></div>
+          <div className="h-10 bg-slate-100 dark:bg-white/5 rounded animate-pulse"></div>
         ) : !accountsList || accountsList.length === 0 ? (
-          <p className="text-xs text-gray-500 m-0">No configured Rclone storage pools mapped.</p>
+          <p className="text-xs text-slate-500 dark:text-gray-500 m-0">No configured Rclone storage pools mapped.</p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             {accountsList.map((acc) => (
-              <div key={acc.id} className="glass-panel text-xs flex justify-between items-center">
+              <motion.div
+                key={acc.id}
+                whileHover={{ scale: 1.02 }}
+                transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                className="bg-slate-50 dark:bg-white/3 border border-solid border-slate-200 dark:border-white/5 rounded-xl p-4 flex justify-between items-center text-xs transition-colors duration-300"
+              >
                 <div className="space-y-1">
-                  <span className="font-semibold text-gray-200 block">{acc.name}</span>
-                  <span className="font-mono text-[10px] text-gray-500">{acc.remoteName}:</span>
+                  <span className="font-semibold text-slate-800 dark:text-gray-200 block">{acc.name}</span>
+                  <span className="font-mono text-[10px] text-slate-500 dark:text-gray-500">{acc.remoteName}:</span>
                 </div>
-                <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${acc.status === 'active' ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
+                <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${acc.status === 'active' ? 'bg-green-500/10 text-green-600 dark:text-green-400' : 'bg-red-500/10 text-red-600 dark:text-red-400'}`}>
                   {acc.status}
                 </span>
-              </div>
+              </motion.div>
             ))}
           </div>
         )}
       </div>
-    </div>
+    </motion.div>
   );
 }
