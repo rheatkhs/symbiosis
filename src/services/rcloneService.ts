@@ -265,6 +265,52 @@ export class RcloneService {
   }
 
   // ──────────────────────────────────────────────────────────────────────────
+  // File Operations & Telemetry
+  // ──────────────────────────────────────────────────────────────────────────
+
+  async listFiles(
+    remoteName: string,
+    path: string
+  ): Promise<Array<{
+    Path: string;
+    Name: string;
+    Size: number;
+    MimeType: string;
+    IsDir: boolean;
+    ModTime: string;
+  }>> {
+    const fs = `${remoteName}:`;
+    const data = await this.rcCall<{
+      list: Array<{
+        Path: string;
+        Name: string;
+        Size: number;
+        MimeType: string;
+        IsDir: boolean;
+        ModTime: string;
+      }>;
+    }>("operations/list", { fs, remote: path });
+    return data.list ?? [];
+  }
+
+  async makeDirectory(remoteName: string, path: string): Promise<unknown> {
+    const fs = `${remoteName}:`;
+    return this.rcCall("operations/mkdir", { fs, remote: path });
+  }
+
+  async getStorageAbout(remoteName: string): Promise<{
+    total?: number;
+    used?: number;
+    free?: number;
+    trashed?: number;
+    other?: number;
+  }> {
+    const fs = `${remoteName}:`;
+    return this.rcCall("operations/about", { fs });
+  }
+
+
+  // ──────────────────────────────────────────────────────────────────────────
   // Internal: Generic RC JSON-RPC call with retry  (RC-06, RC-07)
   // ──────────────────────────────────────────────────────────────────────────
 

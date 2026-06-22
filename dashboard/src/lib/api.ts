@@ -4,6 +4,9 @@ export interface Stats {
   completedTransfers: number;
   failedTransfers: number;
   totalStorageUsed: number;
+  totalStorageLimit: number;
+  totalStorageFree: number;
+  hasUnlimitedLimit: boolean;
   rcloneHealthy: boolean;
 }
 
@@ -96,4 +99,47 @@ export const api = {
     if (params?.accountId) searchParams.set("accountId", params.accountId);
     return fetchApi<PaginatedTransfers>(`/api/dash/transfers?${searchParams.toString()}`);
   },
+  getRemoteAbout: (id: string) =>
+    fetchApi<RemoteAbout>(`/api/dash/accounts/${id}/about`),
+  getRemoteFiles: (id: string, path: string) =>
+    fetchApi<RemoteFile[]>(`/api/dash/accounts/${id}/files?path=${encodeURIComponent(path)}`),
+  createRemoteFolder: (id: string, path: string) =>
+    fetchApi<{ success: boolean }>(`/api/dash/accounts/${id}/mkdir`, {
+      method: "POST",
+      body: JSON.stringify({ path }),
+    }),
+  uploadFileToRemote: (accountIdOrRemoteName: string, path: string, file: File) => {
+    const headers = new Headers();
+    headers.append("X-File-Path", path);
+    headers.append("X-File-Name", file.name);
+    return fetch(`/api/stream/upload/${accountIdOrRemoteName}`, {
+      method: "POST",
+      headers,
+      body: file,
+    }).then(async (res) => {
+      if (!res.ok) {
+        const errorBody = await res.json().catch(() => ({}));
+        throw new Error(errorBody.error || `Upload failed with status ${res.status}`);
+      }
+      return res.json();
+    });
+  },
 };
+
+export interface RemoteFile {
+  Path: string;
+  Name: string;
+  Size: number;
+  MimeType: string;
+  IsDir: boolean;
+  ModTime: string;
+}
+
+export interface RemoteAbout {
+  total: number;
+  used: number;
+  free: number;
+  trashed: number;
+  other: number;
+}
+

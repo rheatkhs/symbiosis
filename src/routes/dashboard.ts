@@ -42,8 +42,22 @@ router.get("/stats", async (c) => {
     const completedTransfers = transfersCountResult[0]?.completed ?? 0;
     const failedTransfers = transfersCountResult[0]?.failed ?? 0;
 
-    const storageSumResult = await db.select({ total: sql<number>`coalesce(sum(storage_used), 0)` }).from(accounts);
-    const totalStorageUsed = Number(storageSumResult[0]?.total ?? 0);
+    // Fetch all accounts to compute sum limits, used, and free storage
+    const allAccounts = await db.select().from(accounts);
+    let totalStorageLimit = 0;
+    let totalStorageUsed = 0;
+    let hasUnlimitedLimit = false;
+
+    for (const account of allAccounts) {
+      totalStorageUsed += account.storageUsed;
+      if (account.storageLimit) {
+        totalStorageLimit += account.storageLimit;
+      } else {
+        hasUnlimitedLimit = true;
+      }
+    }
+
+    const totalStorageFree = Math.max(0, totalStorageLimit - totalStorageUsed);
 
     return c.json({
       totalAccounts,
@@ -51,6 +65,9 @@ router.get("/stats", async (c) => {
       completedTransfers,
       failedTransfers,
       totalStorageUsed,
+      totalStorageLimit,
+      totalStorageFree,
+      hasUnlimitedLimit,
       rcloneHealthy: health.healthy,
     });
   } catch (err) {
@@ -280,6 +297,107 @@ router.delete("/accounts/:id", async (c) => {
     return c.json({ error: "Failed to delete account" }, 500);
   }
 });
+
+// Get Rclone remote storage details (capacity, used, free)
+router.get("/accounts/:id/about", async (c) => {
+  const id = c.req.param("id");
+  if (!isValidUuid(id)) {
+    return c.json({ error: "Invalid account UUID format" }, 400);
+  }
+
+  try {
+    const [account] = await db.select().from(accounts).where(eq(accounts.id, id)).limit(1);
+    if (!account) {
+      return c.json({ error: "Account not found" }, 404);
+    }
+
+    const about = await rcloneService.getStorageAbout(account.remoteName);
+
+    // Sync database if stats returned successfully
+    const updates: Record<string, any> = {};
+    if (about.used !== undefined) {
+      updates.storageUsed = about.used;
+    }
+    if (about.total !== undefined) {
+      updates.storageLimit = about.total;
+    }
+
+    if (Object.keys(updates).length > 0) {
+      updates.updatedAt = new Date();
+      await db.update(accounts).set(updates).where(eq(accounts.id, id));
+    }
+
+    return c.json({
+      total: about.total ?? account.storageLimit ?? 0,
+      used: about.used ?? account.storageUsed ?? 0,
+      free: about.free ?? 0,
+      trashed: about.trashed ?? 0,
+      other: about.other ?? 0,
+    });
+  } catch (err) {
+    console.error("Failed to query Rclone remote about status:", err);
+    return c.json({
+      error: "Failed to query remote storage capacity",
+      details: err instanceof Error ? err.message : String(err),
+    }, 500);
+  }
+});
+
+// List files in Rclone remote
+router.get("/accounts/:id/files", async (c) => {
+  const id = c.req.param("id");
+  const path = c.req.query("path") || "";
+  if (!isValidUuid(id)) {
+    return c.json({ error: "Invalid account UUID format" }, 400);
+  }
+
+  try {
+    const [account] = await db.select().from(accounts).where(eq(accounts.id, id)).limit(1);
+    if (!account) {
+      return c.json({ error: "Account not found" }, 404);
+    }
+
+    const list = await rcloneService.listFiles(account.remoteName, path);
+    return c.json(list);
+  } catch (err) {
+    console.error("Failed to list files:", err);
+    return c.json({
+      error: "Failed to list remote files",
+      details: err instanceof Error ? err.message : String(err),
+    }, 500);
+  }
+});
+
+// Create folder on Rclone remote
+router.post("/accounts/:id/mkdir", async (c) => {
+  const id = c.req.param("id");
+  if (!isValidUuid(id)) {
+    return c.json({ error: "Invalid account UUID format" }, 400);
+  }
+
+  try {
+    const body = await c.req.json();
+    const { path } = body;
+    if (!path || typeof path !== "string" || !path.trim()) {
+      return c.json({ error: "Directory path is required" }, 400);
+    }
+
+    const [account] = await db.select().from(accounts).where(eq(accounts.id, id)).limit(1);
+    if (!account) {
+      return c.json({ error: "Account not found" }, 404);
+    }
+
+    await rcloneService.makeDirectory(account.remoteName, path.trim());
+    return c.json({ success: true }, 201);
+  } catch (err) {
+    console.error("Failed to create folder:", err);
+    return c.json({
+      error: "Failed to create directory on remote",
+      details: err instanceof Error ? err.message : String(err),
+    }, 500);
+  }
+});
+
 
 // ── Transfers Endpoints ────────────────────────────────────────────────────
 
