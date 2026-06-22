@@ -19,6 +19,7 @@ function AccountsPage() {
   const queryClient = useQueryClient();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState<Account | null>(null);
+  const [registrationMode, setRegistrationMode] = useState<"oauth" | "manual">("oauth");
 
   // Form states
   const [formData, setFormData] = useState({
@@ -45,6 +46,17 @@ function AccountsPage() {
     },
   });
 
+  const oauthMutation = useMutation({
+    mutationFn: api.oauthGdrive,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["accounts"] });
+      closeModal();
+    },
+    onError: (err: any) => {
+      setErrorMsg(err.message || "Failed to connect Google account. Make sure you complete browser login.");
+    },
+  });
+
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: Partial<Account> }) =>
       api.updateAccount(id, data),
@@ -66,6 +78,7 @@ function AccountsPage() {
 
   const openCreateModal = () => {
     setEditingAccount(null);
+    setRegistrationMode("oauth");
     setFormData({
       name: "",
       remoteName: "",
@@ -78,6 +91,7 @@ function AccountsPage() {
 
   const openEditModal = (account: Account) => {
     setEditingAccount(account);
+    setRegistrationMode("manual");
     setFormData({
       name: account.name,
       remoteName: account.remoteName,
@@ -110,6 +124,11 @@ function AccountsPage() {
           storageLimit: limitInBytes,
         },
       });
+    } else if (registrationMode === "oauth") {
+      oauthMutation.mutate({
+        name: formData.name,
+        remoteName: formData.remoteName,
+      });
     } else {
       createMutation.mutate({
         name: formData.name,
@@ -135,7 +154,7 @@ function AccountsPage() {
           <p className="text-xs text-gray-500 m-0 mt-1">Configure and manage backend Google Drive pools for Symbiosis.</p>
         </div>
         <button onClick={openCreateModal} className="btn-primary">
-          <span className="i-lucide-plus"></span>
+          <span className="i-ri-add-line"></span>
           Register Remote
         </button>
       </div>
@@ -148,13 +167,13 @@ function AccountsPage() {
         </div>
       ) : !accountsList || accountsList.length === 0 ? (
         <div className="glass-card py-16 text-center">
-          <span className="i-lucide-folder-open text-4xl text-gray-600 block mx-auto mb-4"></span>
+          <span className="i-ri-folder-open-line text-4xl text-gray-600 block mx-auto mb-4"></span>
           <h3 className="text-sm font-semibold text-white m-0">No remotes registered</h3>
           <p className="text-xs text-gray-500 max-w-sm mx-auto mt-2 leading-relaxed">
             Configure Google Drive or other storage integrations to enable real-time streaming pipelines.
           </p>
           <button onClick={openCreateModal} className="btn-primary mt-6 mx-auto">
-            <span className="i-lucide-plus"></span>
+            <span className="i-ri-add-line"></span>
             Add First Remote
           </button>
         </div>
@@ -182,14 +201,14 @@ function AccountsPage() {
                         className="w-7 h-7 bg-white/5 hover:bg-white/10 rounded border border-solid border-white/5 text-gray-400 hover:text-white transition-all flex items-center justify-center cursor-pointer"
                         title="Edit Account"
                       >
-                        <span className="i-lucide-edit-3 text-[13px]"></span>
+                        <span className="i-ri-edit-line text-[13px]"></span>
                       </button>
                       <button
                         onClick={() => handleDelete(account.id, account.name)}
                         className="w-7 h-7 bg-red-950/20 hover:bg-red-900 border border-solid border-red-500/20 text-red-400 hover:text-white rounded transition-all flex items-center justify-center cursor-pointer"
                         title="Delete Account"
                       >
-                        <span className="i-lucide-trash-2 text-[13px]"></span>
+                        <span className="i-ri-delete-bin-line text-[13px]"></span>
                       </button>
                     </div>
                   </div>
@@ -237,89 +256,189 @@ function AccountsPage() {
               </h3>
               <button
                 onClick={closeModal}
-                className="w-6 h-6 rounded bg-transparent hover:bg-white/5 text-gray-400 hover:text-white border-none flex items-center justify-center cursor-pointer transition-all"
+                disabled={oauthMutation.isPending || createMutation.isPending || updateMutation.isPending}
+                className="w-6 h-6 rounded bg-transparent hover:bg-white/5 text-gray-400 hover:text-white border-none flex items-center justify-center cursor-pointer transition-all disabled:opacity-30 disabled:cursor-not-allowed"
               >
-                <span className="i-lucide-x"></span>
+                <span className="i-ri-close-line"></span>
               </button>
             </div>
+
+            {/* Registration Mode Tabs */}
+            {!editingAccount && (
+              <div className="flex border-b border-solid border-white/5 bg-white/1 text-xs">
+                <button
+                  type="button"
+                  disabled={oauthMutation.isPending || createMutation.isPending}
+                  onClick={() => setRegistrationMode("oauth")}
+                  className={`flex-1 py-3.5 text-center font-medium border-none cursor-pointer transition-all flex items-center justify-center gap-1.5 disabled:opacity-50 ${
+                    registrationMode === "oauth"
+                      ? "text-violet-400 border-b-2 border-b-solid border-b-violet-500 bg-white/2"
+                      : "text-gray-400 hover:text-white bg-transparent"
+                  }`}
+                >
+                  <span className="i-ri-google-fill text-sm"></span>
+                  Link Google Drive (OAuth)
+                </button>
+                <button
+                  type="button"
+                  disabled={oauthMutation.isPending || createMutation.isPending}
+                  onClick={() => setRegistrationMode("manual")}
+                  className={`flex-1 py-3.5 text-center font-medium border-none cursor-pointer transition-all flex items-center justify-center gap-1.5 disabled:opacity-50 ${
+                    registrationMode === "manual"
+                      ? "text-violet-400 border-b-2 border-b-solid border-b-violet-500 bg-white/2"
+                      : "text-gray-400 hover:text-white bg-transparent"
+                  }`}
+                >
+                  <span className="i-ri-settings-4-line text-sm"></span>
+                  Manual Connection
+                </button>
+              </div>
+            )}
 
             {/* Modal Form */}
             <form onSubmit={handleSubmit} className="p-6 space-y-4 m-0">
               {errorMsg && (
                 <div className="bg-red-500/10 border border-solid border-red-500/20 text-red-400 text-xs rounded-lg p-3 flex items-start gap-2">
-                  <span className="i-lucide-alert-circle mt-0.5"></span>
+                  <span className="i-ri-error-warning-line mt-0.5"></span>
                   <div>{errorMsg}</div>
                 </div>
               )}
 
-              <div className="space-y-1">
-                <label className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Display Name</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Backup Drive"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="input-field"
-                />
-              </div>
+              {registrationMode === "oauth" && !editingAccount ? (
+                <>
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Display Name</label>
+                    <input
+                      type="text"
+                      required
+                      disabled={oauthMutation.isPending}
+                      placeholder="e.g. My Personal Drive"
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      className="input-field"
+                    />
+                  </div>
 
-              <div className="space-y-1">
-                <label className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Rclone Remote Name</label>
-                <input
-                  type="text"
-                  required
-                  disabled={!!editingAccount}
-                  placeholder="e.g. gdrive1"
-                  value={formData.remoteName}
-                  onChange={(e) => setFormData({ ...formData, remoteName: e.target.value })}
-                  className="input-field disabled:opacity-50 disabled:cursor-not-allowed"
-                />
-                {!editingAccount && (
-                  <p className="text-[10px] text-gray-600 m-0 mt-1 leading-normal">
-                    Must match the configuration name in your Rclone config file (e.g. [gdrive1] config block).
-                  </p>
-                )}
-              </div>
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Rclone Remote Name</label>
+                    <input
+                      type="text"
+                      required
+                      disabled={oauthMutation.isPending}
+                      placeholder="e.g. gdrive"
+                      value={formData.remoteName}
+                      onChange={(e) => setFormData({ ...formData, remoteName: e.target.value })}
+                      className="input-field"
+                    />
+                    <p className="text-[10px] text-gray-500 m-0 mt-1 leading-normal">
+                      The internal identifier Rclone will use to map this storage pool.
+                    </p>
+                  </div>
 
-              <div className="space-y-1">
-                <label className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Provider Type</label>
-                <select
-                  value={formData.provider}
-                  onChange={(e) => setFormData({ ...formData, provider: e.target.value })}
-                  className="input-field bg-brand-dark"
-                >
-                  <option value="google drive">Google Drive</option>
-                  <option value="dropbox">Dropbox</option>
-                  <option value="s3">Amazon S3</option>
-                  <option value="onedrive">OneDrive</option>
-                  <option value="local">Local Disk</option>
-                </select>
-              </div>
+                  <div className="bg-violet-950/20 border border-solid border-violet-500/20 rounded-lg p-3.5 flex gap-3 items-start">
+                    <span className="i-ri-information-line text-violet-400 text-lg flex-shrink-0 mt-0.5 animate-pulse"></span>
+                    <p className="text-[10.5px] leading-relaxed text-violet-300 m-0">
+                      <strong>Interactive Authorization:</strong> Submitting will open your web browser on this machine to verify your Google Account. Please allow the requested permissions to complete the link.
+                    </p>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Display Name</label>
+                    <input
+                      type="text"
+                      required
+                      disabled={createMutation.isPending || updateMutation.isPending}
+                      placeholder="e.g. Backup Drive"
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      className="input-field"
+                    />
+                  </div>
 
-              <div className="space-y-1">
-                <label className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Storage Limit (GB)</label>
-                <input
-                  type="number"
-                  step="any"
-                  placeholder="Unlimited"
-                  value={formData.storageLimit}
-                  onChange={(e) => setFormData({ ...formData, storageLimit: e.target.value })}
-                  className="input-field font-mono"
-                />
-              </div>
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Rclone Remote Name</label>
+                    <input
+                      type="text"
+                      required
+                      disabled={!!editingAccount || createMutation.isPending}
+                      placeholder="e.g. gdrive1"
+                      value={formData.remoteName}
+                      onChange={(e) => setFormData({ ...formData, remoteName: e.target.value })}
+                      className="input-field disabled:opacity-50 disabled:cursor-not-allowed"
+                    />
+                    {!editingAccount && (
+                      <p className="text-[10px] text-gray-500 m-0 mt-1 leading-normal">
+                        Must match the configuration name in your Rclone config file (e.g. [gdrive1] config block).
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Provider Type</label>
+                    <select
+                      value={formData.provider}
+                      disabled={!!editingAccount || createMutation.isPending}
+                      onChange={(e) => setFormData({ ...formData, provider: e.target.value })}
+                      className="input-field bg-brand-dark"
+                    >
+                      <option value="google drive">Google Drive</option>
+                      <option value="dropbox">Dropbox</option>
+                      <option value="s3">Amazon S3</option>
+                      <option value="onedrive">OneDrive</option>
+                      <option value="local">Local Disk</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Storage Limit (GB)</label>
+                    <input
+                      type="number"
+                      step="any"
+                      disabled={createMutation.isPending || updateMutation.isPending}
+                      placeholder="Unlimited"
+                      value={formData.storageLimit}
+                      onChange={(e) => setFormData({ ...formData, storageLimit: e.target.value })}
+                      className="input-field font-mono"
+                    />
+                  </div>
+                </>
+              )}
 
               {/* Modal Footer */}
               <div className="flex justify-end gap-3 pt-4 border-t border-solid border-white/5 mt-6">
-                <button type="button" onClick={closeModal} className="btn-secondary">
+                <button
+                  type="button"
+                  onClick={closeModal}
+                  disabled={oauthMutation.isPending || createMutation.isPending || updateMutation.isPending}
+                  className="btn-secondary disabled:opacity-30 disabled:cursor-not-allowed"
+                >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  disabled={createMutation.isPending || updateMutation.isPending}
-                  className="btn-primary"
+                  disabled={oauthMutation.isPending || createMutation.isPending || updateMutation.isPending}
+                  className="btn-primary flex items-center gap-1.5 disabled:opacity-70 disabled:cursor-not-allowed"
                 >
-                  {createMutation.isPending || updateMutation.isPending ? "Saving..." : "Save Changes"}
+                  {oauthMutation.isPending ? (
+                    <>
+                      <span className="i-ri-loader-4-line animate-spin text-sm"></span>
+                      Authorizing...
+                    </>
+                  ) : createMutation.isPending || updateMutation.isPending ? (
+                    <>
+                      <span className="i-ri-loader-4-line animate-spin text-sm"></span>
+                      Saving...
+                    </>
+                  ) : registrationMode === "oauth" && !editingAccount ? (
+                    <>
+                      <span className="i-ri-google-fill text-sm"></span>
+                      Authorize & Connect
+                    </>
+                  ) : (
+                    "Save Changes"
+                  )}
                 </button>
               </div>
             </form>

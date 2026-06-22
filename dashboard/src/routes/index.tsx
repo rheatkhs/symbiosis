@@ -42,28 +42,28 @@ function DashboardOverview() {
         <StatCard
           title="Active Streams"
           value={stats?.activeTransfers ?? 0}
-          icon="i-lucide-activity"
+          icon="i-ri-pulse-line"
           description="Transfers actively piped to Rclone"
           loading={statsLoading}
         />
         <StatCard
           title="Aggregated Storage"
           value={formatBytes(stats?.totalStorageUsed ?? 0)}
-          icon="i-lucide-database"
+          icon="i-ri-database-2-line"
           description="Total storage uploaded via proxy"
           loading={statsLoading}
         />
         <StatCard
           title="Registered Remotes"
           value={stats?.totalAccounts ?? 0}
-          icon="i-lucide-hard-drive"
+          icon="i-ri-hard-drive-2-line"
           description="Active storage accounts configured"
           loading={statsLoading}
         />
         <StatCard
           title="Rclone Daemon"
           value={stats?.rcloneHealthy ? "HEALTHY" : "DOWN"}
-          icon="i-lucide-heart-pulse"
+          icon="i-ri-heart-pulse-line"
           description="Rclone RC HTTP connection status"
           loading={statsLoading}
         />
@@ -75,7 +75,7 @@ function DashboardOverview() {
         <div className="lg:col-span-2 glass-card space-y-4">
           <div className="flex items-center justify-between border-b border-solid border-white/5 pb-4">
             <h3 className="text-sm font-semibold text-white tracking-wide uppercase m-0 flex items-center gap-2">
-              <span className="i-lucide-history text-violet-400"></span>
+              <span className="i-ri-history-line text-violet-400"></span>
               Recent Activity
             </h3>
             <span className="text-[10px] font-mono text-gray-500">AUTO-REFRESH ENABLED</span>
@@ -154,7 +154,7 @@ function DashboardOverview() {
         <div className="glass-card flex flex-col justify-between">
           <div className="space-y-4">
             <h3 className="text-sm font-semibold text-white tracking-wide uppercase m-0 flex items-center gap-2 border-b border-solid border-white/5 pb-4">
-              <span className="i-lucide-terminal text-violet-400"></span>
+              <span className="i-ri-terminal-box-line text-violet-400"></span>
               Streaming Guide
             </h3>
             <p className="text-xs text-gray-400 leading-relaxed m-0">

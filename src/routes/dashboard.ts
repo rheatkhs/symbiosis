@@ -120,6 +120,57 @@ router.post("/accounts", async (c) => {
   }
 });
 
+// Start Google Drive OAuth flow in local Rclone
+router.post("/accounts/oauth-gdrive", async (c) => {
+  try {
+    const body = await c.req.json();
+    const { name, remoteName } = body;
+
+    if (!name || typeof name !== "string" || !name.trim()) {
+      return c.json({ error: "Account display name is required" }, 400);
+    }
+    if (!remoteName || typeof remoteName !== "string" || !isValidRemoteName(remoteName)) {
+      return c.json({ error: "Remote name must be alphanumeric and cannot contain special characters" }, 400);
+    }
+
+    // Check if remoteName is already in database
+    const [existing] = await db
+      .select()
+      .from(accounts)
+      .where(eq(accounts.remoteName, remoteName))
+      .limit(1);
+    if (existing) {
+      return c.json({ error: "An account with this remote name is already registered in Symbiosis" }, 400);
+    }
+
+    // Trigger Rclone's config/create with type drive.
+    // This will open a browser window on the host running the Hono server (which is local).
+    await rcloneService.createRemote(remoteName.trim(), "drive", {
+      scope: "drive",
+    });
+
+    // If Rclone config/create returns successfully, it means OAuth flow succeeded and remote is created.
+    // Insert into database
+    const [inserted] = await db
+      .insert(accounts)
+      .values({
+        name: name.trim(),
+        remoteName: remoteName.trim(),
+        provider: "google drive",
+        status: "active",
+      })
+      .returning();
+
+    return c.json(inserted, 201);
+  } catch (err) {
+    console.error("Failed to complete Google Drive OAuth:", err);
+    return c.json({
+      error: "Failed to connect Google Drive. Ensure the local Rclone daemon is reachable and you complete authorization in the browser.",
+      details: err instanceof Error ? err.message : String(err),
+    }, 500);
+  }
+});
+
 // Get single account
 router.get("/accounts/:id", async (c) => {
   const id = c.req.param("id");

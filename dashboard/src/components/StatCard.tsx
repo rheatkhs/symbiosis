@@ -27,7 +27,7 @@ export function StatCard({ title, value, icon, description, loading }: StatCardP
       </div>
 
       <div className="mt-4 text-[11px] text-gray-400 flex items-center gap-1">
-        <span className="i-lucide-info text-[12px] text-gray-500"></span>
+        <span className="i-ri-information-line text-[12px] text-gray-500"></span>
         {description}
       </div>
     </div>

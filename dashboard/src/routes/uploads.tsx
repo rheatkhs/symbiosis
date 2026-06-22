@@ -102,7 +102,7 @@ function UploadsPage() {
           }}
           className="btn-secondary w-full md:w-auto self-end md:self-center"
         >
-          <span className="i-lucide-rotate-ccw"></span>
+          <span className="i-ri-refresh-line"></span>
           Reset Filters
         </button>
       </div>

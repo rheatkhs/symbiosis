@@ -253,6 +253,18 @@ export class RcloneService {
   }
 
   // ──────────────────────────────────────────────────────────────────────────
+  // Config Management
+  // ──────────────────────────────────────────────────────────────────────────
+
+  async createRemote(
+    name: string,
+    type: string,
+    parameters: Record<string, unknown>
+  ): Promise<unknown> {
+    return this.rcCall("config/create", { name, type, parameters });
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
   // Internal: Generic RC JSON-RPC call with retry  (RC-06, RC-07)
   // ──────────────────────────────────────────────────────────────────────────
 

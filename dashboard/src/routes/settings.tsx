@@ -60,7 +60,7 @@ function SettingsPage() {
         {/* Rclone Daemon Health */}
         <div className="glass-card space-y-6">
           <h3 className="text-sm font-semibold text-white tracking-wide uppercase m-0 flex items-center gap-2 border-b border-solid border-white/5 pb-4">
-            <span className="i-lucide-server text-violet-400"></span>
+            <span className="i-ri-server-line text-violet-400"></span>
             Rclone Daemon Status
           </h3>
 
@@ -106,7 +106,7 @@ function SettingsPage() {
         {/* Local Proxy Engine Settings */}
         <div className="glass-card space-y-6">
           <h3 className="text-sm font-semibold text-white tracking-wide uppercase m-0 flex items-center gap-2 border-b border-solid border-white/5 pb-4">
-            <span className="i-lucide-sliders text-violet-400"></span>
+            <span className="i-ri-equalizer-line text-violet-400"></span>
             Proxy Configuration
           </h3>
 
@@ -134,7 +134,7 @@ function SettingsPage() {
       {/* Rclone Remote Mounts list */}
       <div className="glass-card space-y-4">
         <h3 className="text-sm font-semibold text-white tracking-wide uppercase m-0 flex items-center gap-2 border-b border-solid border-white/5 pb-4">
-          <span className="i-lucide-folder-git-2 text-violet-400"></span>
+          <span className="i-ri-git-repository-line text-violet-400"></span>
           Active Remote Connections
         </h3>
 

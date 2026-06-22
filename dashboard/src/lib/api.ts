@@ -69,6 +69,11 @@ export const api = {
       method: "POST",
       body: JSON.stringify(data),
     }),
+  oauthGdrive: (data: { name: string; remoteName: string }) =>
+    fetchApi<Account>("/api/dash/accounts/oauth-gdrive", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
   updateAccount: (id: string, data: Partial<Account>) =>
     fetchApi<Account>(`/api/dash/accounts/${id}`, {
       method: "PUT",
