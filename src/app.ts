@@ -11,6 +11,7 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { streamRoutes } from "./routes/stream";
+import dashboardRoutes from "./routes/dashboard";
 import { rcloneService } from "./services/rcloneService";
 
 const app = new Hono();
@@ -133,5 +134,6 @@ app.get("/health", async (c) => {
 // ────────────────────────────────────────────────────────────────────────────
 
 app.route("/api/stream", streamRoutes);
+app.route("/api/dash", dashboardRoutes);
 
 export default app;

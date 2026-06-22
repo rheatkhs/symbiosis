@@ -9,6 +9,9 @@
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { rcloneService } from "../services/rcloneService";
+import { db } from "../db";
+import { accounts, transfers } from "../db/schema";
+import { eq, or } from "drizzle-orm";
 
 // 5 GB in bytes
 const FIVE_GB = 5 * 1024 * 1024 * 1024;
@@ -50,6 +53,32 @@ streamRoutes.post(
       );
     }
 
+    // Helper validation for UUID
+    const isValidUuid = (val: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
+
+    // ── Fetch Account from Database ────────────────────────────────────
+    let account;
+    try {
+      const conditions = [eq(accounts.remoteName, accountId)];
+      if (isValidUuid(accountId)) {
+        conditions.push(eq(accounts.id, accountId));
+      }
+      const results = await db.select().from(accounts).where(or(...conditions)).limit(1);
+      account = results[0];
+    } catch (dbErr) {
+      console.error("Database query failed while fetching account:", dbErr);
+    }
+
+    if (!account) {
+      return c.json(
+        {
+          error: "Account not found in the database. Please register the account first.",
+          accountId,
+        },
+        404
+      );
+    }
+
     // ── Validate required headers ───────────────────────────────────────
     const filePath = c.req.header("X-File-Path");
     const fileName = c.req.header("X-File-Name");
@@ -75,6 +104,29 @@ streamRoutes.post(
       return c.json({ error: "Request body is empty." }, 400);
     }
 
+    // ── Register Transfer in Database ─────────────────────────────────
+    const contentLength = c.req.header("Content-Length");
+    const contentType = c.req.header("Content-Type");
+    const fileSize = contentLength ? parseInt(contentLength, 10) : 0;
+    const startTime = performance.now();
+
+    let transfer: any;
+    try {
+      const [inserted] = await db
+        .insert(transfers)
+        .values({
+          accountId: account.id,
+          fileName: fileName!,
+          filePath: filePath!,
+          fileSize,
+          status: "streaming",
+        })
+        .returning();
+      transfer = inserted;
+    } catch (dbErr) {
+      console.error("Database insert failed for transfer:", dbErr);
+    }
+
     // ── Pipe to Rclone with abort propagation ───────────────────────────
     const abortController = new AbortController();
 
@@ -84,23 +136,70 @@ streamRoutes.post(
     });
 
     try {
-      const contentLength = c.req.header("Content-Length");
-      const contentType = c.req.header("Content-Type");
-
       const result = await rcloneService.streamUpload(
         body,
         filePath!,
         fileName!,
-        accountId,
+        account.remoteName, // Use the actual remoteName from the DB
         {
           contentType: contentType ?? undefined,
-          contentLength: contentLength ? parseInt(contentLength, 10) : undefined,
+          contentLength: fileSize ? fileSize : undefined,
           signal: abortController.signal,
         }
       );
 
+      // Update Transfer & Storage stats on Success
+      const durationMs = Math.round(performance.now() - startTime);
+      if (transfer) {
+        try {
+          await db
+            .update(transfers)
+            .set({
+              status: "completed",
+              completedAt: new Date(),
+              durationMs,
+            })
+            .where(eq(transfers.id, transfer.id));
+        } catch (dbErr) {
+          console.error("Failed to update transfer to completed:", dbErr);
+        }
+      }
+
+      try {
+        const newStorageUsed = account.storageUsed + fileSize;
+        await db
+          .update(accounts)
+          .set({
+            storageUsed: newStorageUsed,
+            updatedAt: new Date(),
+          })
+          .where(eq(accounts.id, account.id));
+      } catch (dbErr) {
+        console.error("Failed to update account storage usage:", dbErr);
+      }
+
       return c.json(result, 200);
     } catch (err) {
+      const durationMs = Math.round(performance.now() - startTime);
+      const errorMessage = err instanceof Error ? err.message : String(err);
+
+      // Update Transfer on Failure
+      if (transfer) {
+        try {
+          await db
+            .update(transfers)
+            .set({
+              status: "failed",
+              completedAt: new Date(),
+              durationMs,
+              error: errorMessage,
+            })
+            .where(eq(transfers.id, transfer.id));
+        } catch (dbErr) {
+          console.error("Failed to update transfer status to failed:", dbErr);
+        }
+      }
+
       // Client disconnected — don't log as server error
       if (abortController.signal.aborted) {
         return c.json({ error: "Upload aborted by client." }, 400);
@@ -128,15 +227,14 @@ streamRoutes.post(
       }
 
       // Connection refused / daemon down
-      const message = err instanceof Error ? err.message : "Unknown error";
       if (
-        message.includes("ECONNREFUSED") ||
-        message.includes("fetch failed")
+        errorMessage.includes("ECONNREFUSED") ||
+        errorMessage.includes("fetch failed")
       ) {
         return c.json(
           {
             error: "Rclone RC daemon is unavailable.",
-            details: message,
+            details: errorMessage,
           },
           503
         );

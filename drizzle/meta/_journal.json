@@ -1,0 +1,13 @@
+{
+  "version": "5",
+  "dialect": "pg",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1782116360706,
+      "tag": "0000_aspiring_sally_floyd",
+      "breakpoints": true
+    }
+  ]
+}
