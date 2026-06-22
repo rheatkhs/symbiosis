@@ -18,7 +18,7 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-# ── Configuration ────────────────────────────────────────────────────────────
+# -- Configuration ------------------------------------------------------------
 
 $ProjectRoot   = $PSScriptRoot
 $BinDir        = Join-Path $ProjectRoot ".bin"
@@ -28,15 +28,15 @@ $TempZip       = Join-Path $env:TEMP "rclone-windows-amd64.zip"
 $TempExtract   = Join-Path $env:TEMP "rclone-extract-$([System.Guid]::NewGuid().ToString('N').Substring(0,8))"
 $GitignorePath = Join-Path $ProjectRoot ".gitignore"
 
-# ── Banner ───────────────────────────────────────────────────────────────────
+# -- Banner -------------------------------------------------------------------
 
 Write-Host ""
-Write-Host "  ╔══════════════════════════════════════════════════╗" -ForegroundColor Cyan
-Write-Host "  ║     SYMBIOSIS — Rclone Setup Script              ║" -ForegroundColor Cyan
-Write-Host "  ╚══════════════════════════════════════════════════╝" -ForegroundColor Cyan
+Write-Host "  +--------------------------------------------------+" -ForegroundColor Cyan
+Write-Host "  |     SYMBIOSIS - Rclone Setup Script              |" -ForegroundColor Cyan
+Write-Host "  +--------------------------------------------------+" -ForegroundColor Cyan
 Write-Host ""
 
-# ── Idempotency Check ────────────────────────────────────────────────────────
+# -- Idempotency Check --------------------------------------------------------
 
 if (Test-Path $RcloneExe) {
     Write-Host "  [!] rclone.exe already exists at: $RcloneExe" -ForegroundColor Yellow
@@ -56,14 +56,14 @@ if (Test-Path $RcloneExe) {
     }
 }
 
-# ── Create .bin directory ────────────────────────────────────────────────────
+# -- Create .bin directory ----------------------------------------------------
 
 if (-not (Test-Path $BinDir)) {
     New-Item -ItemType Directory -Path $BinDir -Force | Out-Null
     Write-Host "  [+] Created directory: .bin/" -ForegroundColor Green
 }
 
-# ── Download Rclone ──────────────────────────────────────────────────────────
+# -- Download Rclone ----------------------------------------------------------
 
 Write-Host "  [~] Downloading Rclone from:" -ForegroundColor Cyan
 Write-Host "      $DownloadUrl" -ForegroundColor Gray
@@ -80,7 +80,7 @@ catch {
     exit 1
 }
 
-# ── Extract rclone.exe ───────────────────────────────────────────────────────
+# -- Extract rclone.exe -------------------------------------------------------
 
 Write-Host "  [~] Extracting rclone.exe..." -ForegroundColor Cyan
 
@@ -114,7 +114,7 @@ finally {
     Write-Host "  [+] Cleaned up temporary files." -ForegroundColor Green
 }
 
-# ── Verify Binary ───────────────────────────────────────────────────────────
+# -- Verify Binary ------------------------------------------------------------
 
 Write-Host ""
 Write-Host "  [~] Verifying rclone binary..." -ForegroundColor Cyan
@@ -131,7 +131,7 @@ catch {
     exit 1
 }
 
-# ── Manage .gitignore ────────────────────────────────────────────────────────
+# -- Manage .gitignore --------------------------------------------------------
 
 Write-Host ""
 
@@ -148,16 +148,16 @@ if (Test-Path $GitignorePath) {
     Write-Host "  [+] Created .gitignore with '.bin/' entry" -ForegroundColor Green
 }
 
-# ── Final Instructions ───────────────────────────────────────────────────────
+# -- Final Instructions -------------------------------------------------------
 
 Write-Host ""
-Write-Host "  ╔══════════════════════════════════════════════════╗" -ForegroundColor Green
-Write-Host "  ║  Setup Complete!                                 ║" -ForegroundColor Green
-Write-Host "  ╠══════════════════════════════════════════════════╣" -ForegroundColor Green
-Write-Host "  ║                                                  ║" -ForegroundColor Green
-Write-Host "  ║  To start the Rclone RC daemon, run:             ║" -ForegroundColor Green
-Write-Host "  ║                                                  ║" -ForegroundColor Green
-Write-Host "  ║  .bin\rclone.exe rcd --rc-no-auth --rc-addr=:5572║" -ForegroundColor White
-Write-Host "  ║                                                  ║" -ForegroundColor Green
-Write-Host "  ╚══════════════════════════════════════════════════╝" -ForegroundColor Green
+Write-Host "  +--------------------------------------------------+" -ForegroundColor Green
+Write-Host "  |  Setup Complete!                                 |" -ForegroundColor Green
+Write-Host "  +--------------------------------------------------+" -ForegroundColor Green
+Write-Host "  |                                                  |" -ForegroundColor Green
+Write-Host "  |  To start the Rclone RC daemon, run:             |" -ForegroundColor Green
+Write-Host "  |                                                  |" -ForegroundColor Green
+Write-Host "  |  .bin\rclone.exe rcd --rc-no-auth --rc-addr=:5572|" -ForegroundColor White
+Write-Host "  |                                                  |" -ForegroundColor Green
+Write-Host "  +--------------------------------------------------+" -ForegroundColor Green
 Write-Host ""
