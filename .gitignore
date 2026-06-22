@@ -1,0 +1,27 @@
+# Dependencies
+node_modules/
+
+# Rclone binary
+.bin/
+
+# Build output
+dist/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Bun
+bun.lockb
+
+# OS
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
