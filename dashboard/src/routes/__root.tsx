@@ -46,16 +46,12 @@ function RootLayout() {
             >
               <span className="i-ri-menu-line text-lg"></span>
             </button>
-            <div className="text-sm font-medium text-slate-700 dark:text-gray-300 flex items-center gap-2">
-              <span className="i-ri-pulse-line text-violet-400 animate-pulse"></span>
-              Symbiosis Proxy Hub
+            <div className="text-sm font-medium text-slate-700 dark:text-gray-300 flex items-center gap-2 font-semibold">
+              <span className="i-ri-cloud-line text-brand-accent animate-pulse"></span>
+              Symbiosis Drive Manager
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <span className="text-[11px] font-mono bg-slate-100 dark:bg-white/5 px-2.5 py-1 rounded-full border border-solid border-slate-200/80 dark:border-white/10 text-slate-600 dark:text-gray-400 flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
-              RC CONNECTED
-            </span>
             <button
               onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
               className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 border border-solid border-slate-200/80 dark:border-white/10 text-slate-600 dark:text-gray-400 hover:text-slate-800 dark:hover:text-white flex items-center justify-center cursor-pointer transition-all active:scale-95"

@@ -84,7 +84,7 @@ streamRoutes.post(
     const fileName = c.req.header("X-File-Name");
 
     const missing: string[] = [];
-    if (!filePath) missing.push("X-File-Path");
+    if (filePath === undefined || filePath === null) missing.push("X-File-Path");
     if (!fileName) missing.push("X-File-Name");
 
     if (missing.length > 0) {

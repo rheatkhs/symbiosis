@@ -64,9 +64,9 @@ function SettingsPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Rclone Daemon Health */}
-        <div className="bg-white dark:bg-brand-card/95 border border-solid border-slate-200/80 dark:border-white/5 rounded-xl p-6 shadow-sm dark:shadow-none space-y-6 transition-colors duration-300">
+        <div className="bg-white dark:bg-brand-card border border-solid border-slate-200/80 dark:border-white/5 rounded-xl p-6 shadow-sm dark:shadow-none space-y-6 transition-colors duration-300">
           <h3 className="text-sm font-semibold text-slate-800 dark:text-white tracking-wide uppercase m-0 flex items-center gap-2 border-b border-solid border-slate-200/80 dark:border-white/5 pb-4">
-            <span className="i-ri-server-line text-violet-400"></span>
+            <span className="i-ri-server-line text-brand-accent"></span>
             Rclone Daemon Status
           </h3>
 
@@ -84,9 +84,8 @@ function SettingsPage() {
             <div className="space-y-4 text-xs">
               <div className="flex justify-between border-b border-solid border-slate-100 dark:border-white/3 pb-2.5">
                 <span className="text-slate-500 dark:text-gray-500">Connection Health</span>
-                <span className={`font-semibold flex items-center gap-1.5 ${health.rclone.healthy ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
-                  <span className={`w-1.5 h-1.5 rounded-full ${health.rclone.healthy ? "bg-green-500 dark:bg-green-400" : "bg-red-500 dark:bg-red-400 animate-pulse"}`}></span>
-                  {health.rclone.healthy ? "ONLINE" : "UNHEALTHY / TIMEOUT"}
+                <span className={`font-bold uppercase tracking-wide ${health.rclone.healthy ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
+                  {health.rclone.healthy ? "ONLINE" : "UNHEALTHY"}
                 </span>
               </div>
 
@@ -110,9 +109,9 @@ function SettingsPage() {
         </div>
 
         {/* Local Proxy Engine Settings */}
-        <div className="bg-white dark:bg-brand-card/95 border border-solid border-slate-200/80 dark:border-white/5 rounded-xl p-6 shadow-sm dark:shadow-none space-y-6 transition-colors duration-300">
+        <div className="bg-white dark:bg-brand-card border border-solid border-slate-200/80 dark:border-white/5 rounded-xl p-6 shadow-sm dark:shadow-none space-y-6 transition-colors duration-300">
           <h3 className="text-sm font-semibold text-slate-800 dark:text-white tracking-wide uppercase m-0 flex items-center gap-2 border-b border-solid border-slate-200/80 dark:border-white/5 pb-4">
-            <span className="i-ri-equalizer-line text-violet-400"></span>
+            <span className="i-ri-equalizer-line text-brand-accent"></span>
             Proxy Configuration
           </h3>
 
@@ -138,9 +137,9 @@ function SettingsPage() {
       </div>
 
       {/* Rclone Remote Mounts list */}
-      <div className="bg-white dark:bg-brand-card/95 border border-solid border-slate-200/80 dark:border-white/5 rounded-xl p-6 shadow-sm dark:shadow-none space-y-4 transition-colors duration-300">
+      <div className="bg-white dark:bg-brand-card border border-solid border-slate-200/80 dark:border-white/5 rounded-xl p-6 shadow-sm dark:shadow-none space-y-4 transition-colors duration-300">
         <h3 className="text-sm font-semibold text-slate-800 dark:text-white tracking-wide uppercase m-0 flex items-center gap-2 border-b border-solid border-slate-200/80 dark:border-white/5 pb-4">
-          <span className="i-ri-git-repository-line text-violet-400"></span>
+          <span className="i-ri-git-repository-line text-brand-accent"></span>
           Active Remote Connections
         </h3>
 

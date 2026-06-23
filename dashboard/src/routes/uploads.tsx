@@ -65,7 +65,7 @@ function UploadsPage() {
       </div>
 
       {/* Filter Bar */}
-      <div className="bg-white dark:bg-brand-card/95 border border-solid border-slate-200/80 dark:border-white/5 rounded-xl p-6 shadow-sm dark:shadow-none flex flex-col md:flex-row gap-4 items-center justify-between transition-colors duration-300">
+      <div className="bg-white dark:bg-brand-card border border-solid border-slate-200/80 dark:border-white/5 rounded-xl p-6 shadow-sm dark:shadow-none flex flex-col md:flex-row gap-4 items-center justify-between transition-colors duration-300">
         <div className="flex flex-col md:flex-row gap-4 w-full md:w-auto">
           {/* Status Filter */}
           <div className="flex flex-col gap-1 w-full md:w-48">
@@ -114,7 +114,7 @@ function UploadsPage() {
       </div>
 
       {/* Table Container */}
-      <div className="bg-white dark:bg-brand-card/95 border border-solid border-slate-200/80 dark:border-white/5 rounded-xl p-6 shadow-sm dark:shadow-none transition-colors duration-300">
+      <div className="bg-white dark:bg-brand-card border border-solid border-slate-200/80 dark:border-white/5 rounded-xl p-6 shadow-sm dark:shadow-none transition-colors duration-300">
         {isLoading ? (
           <div className="space-y-3 py-6">
             <div className="h-10 bg-slate-100 dark:bg-white/5 rounded animate-pulse"></div>

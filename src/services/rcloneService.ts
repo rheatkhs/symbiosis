@@ -135,9 +135,14 @@ export class RcloneService {
     // The remote name is derived from the accountId.
     // e.g. accountId "gdrive1" → remote name "gdrive1:"
     const fs = `${accountId}:`;
-    const remote = remotePath.endsWith("/")
-      ? `${remotePath}${fileName}`
-      : `${remotePath}/${fileName}`;
+    let cleanPath = remotePath.trim();
+    while (cleanPath.startsWith("/")) {
+      cleanPath = cleanPath.slice(1);
+    }
+    while (cleanPath.endsWith("/")) {
+      cleanPath = cleanPath.slice(0, -1);
+    }
+    const remote = cleanPath ? `${cleanPath}/${fileName}` : fileName;
 
     // Build the URL with query parameters
     const url = new URL(`${this.baseUrl}/operations/uploadfile`);
@@ -167,18 +172,35 @@ export class RcloneService {
       async start(controller) {
         controller.enqueue(preamble);
 
-        const reader = stream.getReader();
-        try {
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            controller.enqueue(value);
+        if (typeof (stream as any).getReader !== "function") {
+          // Fallback for Node.js Readable stream or standard async iterators
+          try {
+            for await (const chunk of stream as any) {
+              controller.enqueue(chunk);
+            }
+          } catch (err) {
+            controller.error(err);
+            return;
           }
-        } catch (err) {
-          controller.error(err);
-          return;
-        } finally {
-          reader.releaseLock();
+        } else {
+          // Standard Web ReadableStream
+          const reader = stream.getReader();
+          try {
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              controller.enqueue(value);
+            }
+          } catch (err) {
+            controller.error(err);
+            return;
+          } finally {
+            try {
+              reader.releaseLock();
+            } catch (lockErr) {
+              // Ignore lock release errors if stream is closed
+            }
+          }
         }
 
         controller.enqueue(epilogue);

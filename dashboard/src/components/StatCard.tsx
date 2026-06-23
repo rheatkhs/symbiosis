@@ -13,10 +13,10 @@ export function StatCard({ title, value, icon, description, loading }: StatCardP
     <motion.div
       whileHover={{ y: -4, scale: 1.01 }}
       transition={{ type: "spring", stiffness: 300, damping: 20 }}
-      className="bg-white dark:bg-white/5 border border-solid border-slate-200/80 dark:border-white/10 rounded-xl p-6 shadow-sm dark:shadow-none hover:border-violet-500/30 dark:hover:border-violet-500/20 group flex flex-col justify-between min-h-[120px] relative overflow-hidden transition-colors duration-300"
+      className="bg-white dark:bg-brand-card border border-solid border-slate-200/80 dark:border-white/10 rounded-xl p-6 shadow-sm dark:shadow-none hover:border-brand-accent/30 dark:hover:border-brand-accent/20 group flex flex-col justify-between min-h-[120px] relative overflow-hidden transition-colors duration-300"
     >
       {/* Background radial glow */}
-      <div className="absolute -right-8 -top-8 w-24 h-24 bg-violet-600/5 rounded-full blur-xl group-hover:bg-violet-600/10 transition-colors duration-300"></div>
+      <div className="absolute -right-8 -top-8 w-24 h-24 bg-brand-accent/5 rounded-full blur-xl group-hover:bg-brand-accent/10 transition-colors duration-300"></div>
 
       <div className="flex items-start justify-between">
         <div className="flex flex-col gap-1">
@@ -27,7 +27,7 @@ export function StatCard({ title, value, icon, description, loading }: StatCardP
             <span className="text-2xl font-bold tracking-tight text-slate-800 dark:text-white font-mono">{value}</span>
           )}
         </div>
-        <div className="w-10 h-10 rounded-lg bg-slate-100 dark:bg-white/5 border border-solid border-slate-200/80 dark:border-white/10 flex items-center justify-center text-slate-500 dark:text-gray-400 group-hover:text-violet-500 dark:group-hover:text-violet-400 group-hover:border-violet-500/30 transition-all">
+        <div className="w-10 h-10 rounded-lg bg-slate-100 dark:bg-white/5 border border-solid border-slate-200/80 dark:border-white/10 flex items-center justify-center text-slate-500 dark:text-gray-400 group-hover:text-brand-accent dark:group-hover:text-brand-accent group-hover:border-brand-accent/30 transition-all">
           <span className={`${icon} text-lg`}></span>
         </div>
       </div>
