@@ -47,6 +47,10 @@ export function FileExplorer({ accounts, initialAccountId }: FileExplorerProps) 
   const [previewTextContent, setPreviewTextContent] = useState<string>("");
   const [previewTextLoading, setPreviewTextLoading] = useState(false);
 
+  // Drag & Drop Upload States
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragCounter, setDragCounter] = useState(0);
+
   const activeAccount = accounts.find((a) => a.id === selectedAccountId) || accounts[0];
 
   const handlePreviewFile = async (file: RemoteFile) => {
@@ -201,15 +205,20 @@ export function FileExplorer({ accounts, initialAccountId }: FileExplorerProps) 
     }
   };
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files || e.target.files.length === 0 || !activeAccount) return;
-    const file = e.target.files[0];
-    
+  const uploadFiles = async (filesList: File[]) => {
+    if (!activeAccount || filesList.length === 0) return;
     setIsUploading(true);
-    setUploadProgress(`Uploading ${file.name}...`);
     setError("");
     try {
-      await api.uploadFileToRemote(activeAccount.remoteName, currentPath, file);
+      for (let i = 0; i < filesList.length; i++) {
+        const file = filesList[i];
+        setUploadProgress(
+          filesList.length > 1
+            ? `Uploading ${file.name} (${i + 1}/${filesList.length})...`
+            : `Uploading ${file.name}...`
+        );
+        await api.uploadFileToRemote(activeAccount.remoteName, currentPath, file);
+      }
       // Refresh statistics and list
       loadDirectory(activeAccount.id, currentPath);
       loadAbout(activeAccount.id);
@@ -221,7 +230,55 @@ export function FileExplorer({ accounts, initialAccountId }: FileExplorerProps) 
     } finally {
       setIsUploading(false);
       setUploadProgress("");
-      e.target.value = ""; // Reset input value
+    }
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    const selectedFiles = Array.from(e.target.files);
+    await uploadFiles(selectedFiles);
+    e.target.value = ""; // Reset input value
+  };
+
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragCounter((prev) => prev + 1);
+    if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
+      setIsDragging(true);
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragCounter((prev) => {
+      const next = prev - 1;
+      if (next === 0) {
+        setIsDragging(false);
+      }
+      return next;
+    });
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    setDragCounter(0);
+
+    if (dragCounter > 0) {
+      console.debug("Dropped files reset counter.");
+    }
+
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const droppedFiles = Array.from(e.dataTransfer.files);
+      await uploadFiles(droppedFiles);
     }
   };
 
@@ -243,7 +300,13 @@ export function FileExplorer({ accounts, initialAccountId }: FileExplorerProps) 
   }
 
   return (
-    <div className="bg-white dark:bg-brand-card border border-solid border-slate-200/80 dark:border-white/5 rounded-xl flex flex-col h-[580px] overflow-hidden shadow-sm dark:shadow-none transition-colors duration-300">
+    <div
+      onDragEnter={handleDragEnter}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      className="relative bg-white dark:bg-brand-card border border-solid border-slate-200/80 dark:border-white/5 rounded-xl flex flex-col h-[580px] overflow-hidden shadow-sm dark:shadow-none transition-colors duration-300"
+    >
       
       {/* FileExplorer Toolbar */}
       <div className="p-4 border-b border-solid border-slate-200 dark:border-white/5 bg-transparent flex flex-col md:flex-row gap-3 items-center justify-between">
@@ -271,6 +334,7 @@ export function FileExplorer({ accounts, initialAccountId }: FileExplorerProps) 
           <input
             type="file"
             id="file-explorer-upload"
+            multiple
             disabled={isUploading}
             onChange={handleFileUpload}
             className="hidden"
@@ -876,6 +940,31 @@ export function FileExplorer({ accounts, initialAccountId }: FileExplorerProps) 
                   Close
                 </button>
               </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Drag & Drop Visual Overlay */}
+      <AnimatePresence>
+        {isDragging && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 z-40 bg-brand-dark/95 border-2 border-dashed border-brand-accent/50 rounded-xl flex flex-col items-center justify-center pointer-events-none"
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 10 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 10 }}
+              className="text-center p-6 max-w-sm"
+            >
+              <span className="i-ri-upload-cloud-2-line text-5xl text-brand-accent animate-bounce block mx-auto mb-4"></span>
+              <h3 className="text-sm font-bold text-white uppercase tracking-wider">Drop to Upload</h3>
+              <p className="text-xs text-slate-400 mt-2 leading-relaxed">
+                Release your files here to stream them directly to your storage account under <span className="font-mono text-white bg-white/10 px-1.5 py-0.5 rounded">/{currentPath || "root"}</span>.
+              </p>
             </motion.div>
           </motion.div>
         )}
