@@ -245,3 +245,97 @@ streamRoutes.post(
     }
   }
 );
+
+function getMimeTypeByExtension(fileName: string): string {
+  const ext = fileName.split(".").pop()?.toLowerCase() || "";
+  const mimeMap: Record<string, string> = {
+    // Images
+    jpg: "image/jpeg",
+    jpeg: "image/jpeg",
+    png: "image/png",
+    gif: "image/gif",
+    svg: "image/svg+xml",
+    webp: "image/webp",
+    bmp: "image/bmp",
+    ico: "image/x-icon",
+    // Videos
+    mp4: "video/mp4",
+    mkv: "video/x-matroska",
+    avi: "video/x-msvideo",
+    mov: "video/quicktime",
+    wmv: "video/x-ms-wmv",
+    flv: "video/x-flv",
+    webm: "video/webm",
+    m4v: "video/x-m4v",
+    // Audio
+    mp3: "audio/mpeg",
+    wav: "audio/wav",
+    flac: "audio/flac",
+    ogg: "audio/ogg",
+    m4a: "audio/mp4",
+    aac: "audio/aac",
+    // Documents
+    pdf: "application/pdf",
+    txt: "text/plain",
+    rtf: "application/rtf",
+    md: "text/markdown",
+    csv: "text/csv",
+    html: "text/html",
+    css: "text/css",
+    js: "application/javascript",
+    json: "application/json",
+  };
+  return mimeMap[ext] ?? "application/octet-stream";
+}
+
+streamRoutes.get("/download/:accountId", async (c) => {
+  const accountId = c.req.param("accountId");
+  const filePath = c.req.query("path");
+
+  if (!accountId || PATH_TRAVERSAL_RE.test(accountId)) {
+    return c.json({ error: "Invalid accountId. Must be alphanumeric with no path traversal." }, 400);
+  }
+  if (!filePath) {
+    return c.json({ error: "Missing required 'path' query parameter." }, 400);
+  }
+
+  // Helper validation for UUID
+  const isValidUuid = (val: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
+
+  // Fetch Account from Database
+  let account;
+  try {
+    const conditions = [eq(accounts.remoteName, accountId)];
+    if (isValidUuid(accountId)) {
+      conditions.push(eq(accounts.id, accountId));
+    }
+    const results = await db.select().from(accounts).where(or(...conditions)).limit(1);
+    account = results[0];
+  } catch (dbErr) {
+    console.error("Database query failed while fetching account:", dbErr);
+  }
+
+  if (!account) {
+    return c.json({ error: "Account not found." }, 404);
+  }
+
+  try {
+    const stream = await rcloneService.downloadFileStream(account.remoteName, filePath);
+    const fileName = filePath.split("/").pop() || "file";
+
+    c.header("Content-Disposition", `inline; filename="${encodeURIComponent(fileName)}"`);
+    c.header("Content-Type", getMimeTypeByExtension(fileName));
+    c.header("Cache-Control", "public, max-age=3600");
+
+    return c.body(stream);
+  } catch (err: any) {
+    console.error("Failed to stream download file:", err);
+    return c.json(
+      {
+        error: "Failed to download file from remote storage.",
+        details: err instanceof Error ? err.message : String(err),
+      },
+      500
+    );
+  }
+});

@@ -142,7 +142,7 @@ export class RcloneService {
     while (cleanPath.endsWith("/")) {
       cleanPath = cleanPath.slice(0, -1);
     }
-    const remote = cleanPath ? `${cleanPath}/${fileName}` : fileName;
+    const remote = cleanPath;
 
     // Build the URL with query parameters
     const url = new URL(`${this.baseUrl}/operations/uploadfile`);
@@ -318,6 +318,43 @@ export class RcloneService {
   async makeDirectory(remoteName: string, path: string): Promise<unknown> {
     const fs = `${remoteName}:`;
     return this.rcCall("operations/mkdir", { fs, remote: path });
+  }
+
+  async deleteFile(remoteName: string, path: string): Promise<unknown> {
+    const fs = `${remoteName}:`;
+    return this.rcCall("operations/deletefile", { fs, remote: path });
+  }
+
+  async deleteDirectory(remoteName: string, path: string): Promise<unknown> {
+    const fs = `${remoteName}:`;
+    return this.rcCall("operations/purge", { fs, remote: path });
+  }
+
+  async downloadFileStream(remoteName: string, path: string): Promise<ReadableStream<Uint8Array>> {
+    const fs = `${remoteName}:`;
+    const res = await fetch(`${this.baseUrl}/core/command`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...this.authHeaders,
+      },
+      body: JSON.stringify({
+        command: "cat",
+        arg: [`${fs}${path}`],
+        returnType: "STREAM",
+      }),
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`Rclone core/command cat failed (${res.status}): ${text}`);
+    }
+
+    if (!res.body) {
+      throw new Error("Rclone download response body stream is missing");
+    }
+
+    return res.body;
   }
 
   async getStorageAbout(remoteName: string): Promise<{

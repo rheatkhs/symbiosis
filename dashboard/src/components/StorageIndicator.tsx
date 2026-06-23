@@ -1,5 +1,3 @@
-import React from "react";
-
 interface StorageIndicatorProps {
   used: number;
   limit: number | null;

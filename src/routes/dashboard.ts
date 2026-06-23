@@ -398,6 +398,42 @@ router.post("/accounts/:id/mkdir", async (c) => {
   }
 });
 
+// Delete file or folder on Rclone remote
+router.delete("/accounts/:id/files", async (c) => {
+  const id = c.req.param("id");
+  const path = c.req.query("path");
+  const isDir = c.req.query("isDir") === "true";
+
+  if (!isValidUuid(id)) {
+    return c.json({ error: "Invalid account UUID format" }, 400);
+  }
+
+  if (!path || typeof path !== "string" || !path.trim()) {
+    return c.json({ error: "File or directory path is required" }, 400);
+  }
+
+  try {
+    const [account] = await db.select().from(accounts).where(eq(accounts.id, id)).limit(1);
+    if (!account) {
+      return c.json({ error: "Account not found" }, 404);
+    }
+
+    if (isDir) {
+      await rcloneService.deleteDirectory(account.remoteName, path.trim());
+    } else {
+      await rcloneService.deleteFile(account.remoteName, path.trim());
+    }
+
+    return c.json({ success: true }, 200);
+  } catch (err) {
+    console.error("Failed to delete item:", err);
+    return c.json({
+      error: "Failed to delete item from remote",
+      details: err instanceof Error ? err.message : String(err),
+    }, 500);
+  }
+});
+
 
 // ── Transfers Endpoints ────────────────────────────────────────────────────
 

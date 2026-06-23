@@ -2,7 +2,6 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../lib/api";
 import { motion } from "framer-motion";
-import { StorageIndicator } from "../components/StorageIndicator";
 
 export const Route = createFileRoute("/")({
   component: DashboardOverview,

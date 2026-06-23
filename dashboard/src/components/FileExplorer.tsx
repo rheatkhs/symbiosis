@@ -3,7 +3,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { api, type Account, type RemoteFile, type RemoteAbout } from "../lib/api";
 import { FileIcon } from "./FileIcon";
-import { StorageIndicator } from "./StorageIndicator";
 
 interface FileExplorerProps {
   accounts: Account[];
@@ -39,8 +38,87 @@ export function FileExplorer({ accounts, initialAccountId }: FileExplorerProps) 
   const [isCreatingFolder, setIsCreatingFolder] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<string>("");
+  const [deletingPaths, setDeletingPaths] = useState<string[]>([]);
+  const [activeMenuPath, setActiveMenuPath] = useState<string | null>(null);
+  const [deleteConfirmItem, setDeleteConfirmItem] = useState<{ path: string; isDir: boolean; name: string } | null>(null);
+  
+  // File Preview States
+  const [previewFile, setPreviewFile] = useState<RemoteFile | null>(null);
+  const [previewTextContent, setPreviewTextContent] = useState<string>("");
+  const [previewTextLoading, setPreviewTextLoading] = useState(false);
 
   const activeAccount = accounts.find((a) => a.id === selectedAccountId) || accounts[0];
+
+  const handlePreviewFile = async (file: RemoteFile) => {
+    setPreviewFile(file);
+    setActiveMenuPath(null);
+
+    const ext = file.Name.split(".").pop()?.toLowerCase() || "";
+    const textExts = ["txt", "md", "csv", "html", "css", "js", "ts", "jsx", "tsx", "json", "py", "go", "java", "c", "cpp", "sh", "yml", "yaml", "xml", "ini", "log"];
+
+    if (textExts.includes(ext)) {
+      setPreviewTextLoading(true);
+      setPreviewTextContent("");
+      try {
+        const url = `/api/stream/download/${selectedAccountId}?path=${encodeURIComponent(file.Path)}`;
+        const res = await fetch(url);
+        if (res.ok) {
+          const text = await res.text();
+          setPreviewTextContent(text.slice(0, 100000));
+        } else {
+          setPreviewTextContent("Failed to load file preview content.");
+        }
+      } catch (err: any) {
+        setPreviewTextContent(`Error loading file: ${err.message}`);
+      } finally {
+        setPreviewTextLoading(false);
+      }
+    }
+  };
+
+  // Close dropdown when user clicks anywhere else
+  useEffect(() => {
+    const handleOutsideClick = () => {
+      setActiveMenuPath(null);
+    };
+    if (activeMenuPath) {
+      document.addEventListener("click", handleOutsideClick);
+    }
+    return () => {
+      document.removeEventListener("click", handleOutsideClick);
+    };
+  }, [activeMenuPath]);
+
+  const handleDeleteTrigger = (filePath: string, isDir: boolean) => {
+    const cleanName = filePath.split("/").pop() || filePath;
+    setDeleteConfirmItem({ path: filePath, isDir, name: cleanName });
+    setActiveMenuPath(null);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteConfirmItem || !selectedAccountId) return;
+    const { path, isDir } = deleteConfirmItem;
+
+    setDeletingPaths((prev) => [...prev, path]);
+    setError("");
+    try {
+      await api.deleteRemoteFile(selectedAccountId, path, isDir);
+      
+      // Refresh statistics and list
+      loadDirectory(selectedAccountId, currentPath);
+      loadAbout(selectedAccountId);
+      queryClient.invalidateQueries({ queryKey: ["dashboardStats"] });
+      queryClient.invalidateQueries({ queryKey: ["recentTransfers"] });
+      queryClient.invalidateQueries({ queryKey: ["accounts"] });
+      
+      // Close modal
+      setDeleteConfirmItem(null);
+    } catch (err: any) {
+      setError(err.message || "Failed to delete item.");
+    } finally {
+      setDeletingPaths((prev) => prev.filter((p) => p !== path));
+    }
+  };
 
   // Set initial account selection
   useEffect(() => {
@@ -364,6 +442,7 @@ export function FileExplorer({ accounts, initialAccountId }: FileExplorerProps) 
                 <th className="pb-2 w-24">Size</th>
                 <th className="pb-2 w-32">Type</th>
                 <th className="pb-2 w-40 text-right pr-2">Modified</th>
+                <th className="pb-2 w-16 text-right pr-2">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-solid divide-slate-100 dark:divide-white/3">
@@ -380,24 +459,21 @@ export function FileExplorer({ accounts, initialAccountId }: FileExplorerProps) 
                   <td className="py-2.5 text-slate-400">-</td>
                   <td className="py-2.5 text-slate-400">Parent Directory</td>
                   <td className="py-2.5 text-slate-400 text-right pr-2 font-mono text-[10px]">-</td>
+                  <td className="py-2.5 text-right pr-2">-</td>
                 </tr>
               )}
 
               {filteredFiles.map((file) => (
                 <tr
                   key={file.Path}
-                  onDoubleClick={() => file.IsDir && handleNavigate(file.Path)}
-                  className={`group transition-colors ${
-                    file.IsDir
-                      ? "hover:bg-slate-50 dark:hover:bg-white/2 cursor-pointer"
-                      : "hover:bg-slate-50/50 dark:hover:bg-white/1"
-                  }`}
+                  onDoubleClick={() => file.IsDir ? handleNavigate(file.Path) : handlePreviewFile(file)}
+                  className="group hover:bg-slate-50 dark:hover:bg-white/2 cursor-pointer transition-colors"
                 >
                   <td className="py-2.5 pl-2 font-medium text-slate-800 dark:text-gray-200 flex items-center gap-2 truncate max-w-[320px]">
                     <FileIcon name={file.Name} isDir={file.IsDir} className="text-base" />
                     <span
-                      onClick={() => file.IsDir && handleNavigate(file.Path)}
-                      className={file.IsDir ? "hover:underline text-brand-accent" : ""}
+                      onClick={() => file.IsDir ? handleNavigate(file.Path) : handlePreviewFile(file)}
+                      className="hover:underline text-brand-accent cursor-pointer"
                     >
                       {file.Name}
                     </span>
@@ -410,6 +486,48 @@ export function FileExplorer({ accounts, initialAccountId }: FileExplorerProps) 
                   </td>
                   <td className="py-2.5 text-slate-500 dark:text-gray-500 text-right pr-2 font-mono text-[10px]">
                     {new Date(file.ModTime).toLocaleString()}
+                  </td>
+                  <td className="py-2.5 text-right pr-2 relative">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveMenuPath(activeMenuPath === file.Path ? null : file.Path);
+                      }}
+                      className="w-7 h-7 rounded hover:bg-slate-100 dark:hover:bg-white/5 text-slate-500 dark:text-gray-400 flex items-center justify-center cursor-pointer transition-all ml-auto"
+                      title="Actions"
+                    >
+                      <span className="i-ri-more-2-fill text-sm"></span>
+                    </button>
+                    
+                    <AnimatePresence>
+                      {activeMenuPath === file.Path && (
+                        <motion.div
+                          initial={{ opacity: 0, scale: 0.95, y: -5 }}
+                          animate={{ opacity: 1, scale: 1, y: 0 }}
+                          exit={{ opacity: 0, scale: 0.95, y: -5 }}
+                          transition={{ duration: 0.1 }}
+                          className="absolute right-2 top-9 z-30 bg-white dark:bg-brand-card border border-solid border-slate-200 dark:border-white/10 rounded-lg shadow-lg py-1 w-32 text-left"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {!file.IsDir && (
+                            <button
+                              onClick={() => handlePreviewFile(file)}
+                              className="w-full px-3 py-1.5 text-xs text-slate-700 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-white/5 border-none bg-transparent flex items-center gap-2 cursor-pointer font-medium"
+                            >
+                              <span className="i-ri-eye-line text-sm text-slate-400"></span>
+                              Preview
+                            </button>
+                          )}
+                          <button
+                            onClick={() => handleDeleteTrigger(file.Path, file.IsDir)}
+                            className="w-full px-3 py-1.5 text-xs text-red-500 hover:bg-red-500/10 hover:text-red-600 border-none bg-transparent flex items-center gap-2 cursor-pointer font-medium"
+                          >
+                            <span className="i-ri-delete-bin-6-line text-sm"></span>
+                            Delete
+                          </button>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </td>
                 </tr>
               ))}
@@ -434,10 +552,53 @@ export function FileExplorer({ accounts, initialAccountId }: FileExplorerProps) 
               <motion.div
                 key={file.Path}
                 whileHover={{ y: -2 }}
-                onDoubleClick={() => file.IsDir && handleNavigate(file.Path)}
-                onClick={() => file.IsDir && handleNavigate(file.Path)}
+                onDoubleClick={() => file.IsDir ? handleNavigate(file.Path) : handlePreviewFile(file)}
+                onClick={() => file.IsDir ? handleNavigate(file.Path) : handlePreviewFile(file)}
                 className="flex flex-col items-center justify-center p-4 border border-solid border-slate-200 dark:border-white/5 rounded-xl hover:bg-slate-50 dark:hover:bg-white/2 cursor-pointer text-center relative group min-h-[110px] transition-colors"
               >
+                {/* Actions button (floating, visible on hover) */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setActiveMenuPath(activeMenuPath === file.Path ? null : file.Path);
+                  }}
+                  className="absolute top-1.5 right-1.5 w-6 h-6 rounded bg-white dark:bg-brand-dark border border-solid border-slate-200 dark:border-white/10 text-slate-500 hover:text-slate-600 dark:text-gray-400 hover:bg-slate-50 dark:hover:bg-white/5 flex items-center justify-center cursor-pointer transition-all opacity-0 group-hover:opacity-100 z-10"
+                  title="Actions"
+                >
+                  <span className="i-ri-more-2-fill text-[11px]"></span>
+                </button>
+
+                {/* Dropdown Menu */}
+                <AnimatePresence>
+                  {activeMenuPath === file.Path && (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.95, y: -5 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.95, y: -5 }}
+                      transition={{ duration: 0.1 }}
+                      className="absolute right-1.5 top-8 z-30 bg-white dark:bg-brand-card border border-solid border-slate-200 dark:border-white/10 rounded-lg shadow-lg py-1 w-28 text-left"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {!file.IsDir && (
+                        <button
+                          onClick={() => handlePreviewFile(file)}
+                          className="w-full px-2.5 py-1.5 text-[10px] text-slate-700 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-white/5 border-none bg-transparent flex items-center gap-1.5 cursor-pointer font-medium"
+                        >
+                          <span className="i-ri-eye-line text-xs text-slate-400"></span>
+                          Preview
+                        </button>
+                      )}
+                      <button
+                        onClick={() => handleDeleteTrigger(file.Path, file.IsDir)}
+                        className="w-full px-2.5 py-1.5 text-[10px] text-red-500 hover:bg-red-500/10 hover:text-red-600 border-none bg-transparent flex items-center gap-1.5 cursor-pointer font-medium"
+                      >
+                        <span className="i-ri-delete-bin-6-line text-xs"></span>
+                        Delete
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
                 <div className="group-hover:scale-105 transition-transform">
                   <FileIcon name={file.Name} isDir={file.IsDir} className="text-3xl" />
                 </div>
@@ -480,6 +641,245 @@ export function FileExplorer({ accounts, initialAccountId }: FileExplorerProps) 
           </div>
         ) : null}
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <AnimatePresence>
+        {deleteConfirmItem && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.96, y: 15 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.96, y: 15 }}
+              transition={{ type: "spring", stiffness: 350, damping: 28 }}
+              className="bg-white dark:bg-brand-card border border-solid border-slate-200 dark:border-white/10 rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl transition-colors duration-300"
+            >
+              {/* Modal Header */}
+              <div className="px-5 py-4 border-b border-solid border-slate-100 dark:border-white/5 flex justify-between items-center bg-slate-50/50 dark:bg-white/1">
+                <h3 className="text-xs font-bold text-slate-800 dark:text-white tracking-wider uppercase m-0 flex items-center gap-1.5">
+                  <span className="i-ri-error-warning-line text-red-500 text-sm"></span>
+                  Confirm Delete
+                </h3>
+                <button
+                  onClick={() => setDeleteConfirmItem(null)}
+                  className="w-6 h-6 rounded-lg bg-transparent hover:bg-slate-200/50 dark:hover:bg-white/5 text-slate-400 hover:text-slate-700 dark:hover:text-white border-none flex items-center justify-center cursor-pointer transition-all"
+                >
+                  <span className="i-ri-close-line text-base"></span>
+                </button>
+              </div>
+
+              {/* Modal Content */}
+              <div className="p-5 space-y-3">
+                <p className="text-xs text-slate-600 dark:text-gray-300 leading-relaxed m-0 font-medium">
+                  Are you sure you want to permanently delete the {deleteConfirmItem.isDir ? "directory" : "file"}{" "}
+                  <strong className="text-slate-900 dark:text-white break-all font-semibold">"{deleteConfirmItem.name}"</strong>?
+                </p>
+                {deleteConfirmItem.isDir && (
+                  <p className="text-[10px] text-red-500/90 dark:text-red-400/90 font-medium leading-relaxed bg-red-500/5 dark:bg-red-500/10 border border-solid border-red-500/10 rounded-lg p-2.5 m-0 flex items-start gap-1.5">
+                    <span className="i-ri-alert-line mt-0.5 text-xs flex-shrink-0"></span>
+                    <span>Warning: This action will recursively delete this folder and all of its contents. This cannot be undone.</span>
+                  </p>
+                )}
+              </div>
+
+              {/* Modal Actions */}
+              <div className="px-5 py-3.5 bg-slate-50/30 dark:bg-white/1 border-t border-solid border-slate-100 dark:border-white/5 flex justify-end gap-2">
+                <button
+                  onClick={() => setDeleteConfirmItem(null)}
+                  disabled={deletingPaths.includes(deleteConfirmItem.path)}
+                  className="btn-secondary py-1.5 px-3 text-xs border border-solid border-slate-200 dark:border-white/10"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmDelete}
+                  disabled={deletingPaths.includes(deleteConfirmItem.path)}
+                  className="py-1.5 px-3.5 text-xs text-white bg-red-600 hover:bg-red-700 rounded-lg font-semibold flex items-center gap-1.5 cursor-pointer disabled:opacity-50 select-none shadow-sm hover:shadow transition-all"
+                >
+                  {deletingPaths.includes(deleteConfirmItem.path) ? (
+                    <>
+                      <span className="i-ri-loader-4-line animate-spin"></span>
+                      Deleting...
+                    </>
+                  ) : (
+                    "Delete"
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* File Preview Modal */}
+      <AnimatePresence>
+        {previewFile && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+            onClick={() => {
+              setPreviewFile(null);
+              setPreviewTextContent("");
+            }}
+          >
+            <motion.div
+              initial={{ scale: 0.96, y: 15 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.96, y: 15 }}
+              transition={{ type: "spring", stiffness: 350, damping: 28 }}
+              className="bg-white dark:bg-brand-card border border-solid border-slate-200 dark:border-white/10 rounded-2xl w-full max-w-4xl overflow-hidden shadow-2xl transition-colors duration-300 flex flex-col max-h-[85vh]"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Modal Header */}
+              <div className="px-5 py-4 border-b border-solid border-slate-100 dark:border-white/5 flex justify-between items-center bg-slate-50/50 dark:bg-white/1">
+                <div className="flex items-center gap-2 truncate">
+                  <FileIcon name={previewFile.Name} isDir={previewFile.IsDir} className="text-lg flex-shrink-0" />
+                  <div className="truncate text-left">
+                    <h3 className="text-xs font-bold text-slate-800 dark:text-white tracking-wider uppercase m-0 truncate">
+                      {previewFile.Name}
+                    </h3>
+                    <p className="text-[10px] text-slate-400 dark:text-gray-500 font-mono m-0 mt-0.5">
+                      {formatBytes(previewFile.Size)} • {new Date(previewFile.ModTime).toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <a
+                    href={`/api/stream/download/${selectedAccountId}?path=${encodeURIComponent(previewFile.Path)}`}
+                    download={previewFile.Name}
+                    className="w-8 h-8 rounded-lg bg-transparent hover:bg-slate-200/50 dark:hover:bg-white/5 text-slate-400 hover:text-brand-accent border-none flex items-center justify-center cursor-pointer transition-all"
+                    title="Download file"
+                  >
+                    <span className="i-ri-download-2-line text-lg"></span>
+                  </a>
+                  <button
+                    onClick={() => {
+                      setPreviewFile(null);
+                      setPreviewTextContent("");
+                    }}
+                    className="w-8 h-8 rounded-lg bg-transparent hover:bg-slate-200/50 dark:hover:bg-white/5 text-slate-400 hover:text-slate-700 dark:hover:text-white border-none flex items-center justify-center cursor-pointer transition-all"
+                    title="Close"
+                  >
+                    <span className="i-ri-close-line text-xl"></span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Modal Content */}
+              <div className="p-6 overflow-y-auto flex-1 flex flex-col items-center justify-center bg-slate-50/30 dark:bg-brand-dark/20 min-h-[300px]">
+                {(() => {
+                  const ext = previewFile.Name.split(".").pop()?.toLowerCase() || "";
+                  const previewUrl = `/api/stream/download/${selectedAccountId}?path=${encodeURIComponent(previewFile.Path)}`;
+                  
+                  const imageExts = ["jpg", "jpeg", "png", "gif", "svg", "webp", "bmp", "ico"];
+                  const videoExts = ["mp4", "mkv", "avi", "mov", "wmv", "flv", "webm", "m4v"];
+                  const audioExts = ["mp3", "wav", "flac", "ogg", "m4a", "wma", "aac"];
+                  const textExts = ["txt", "md", "csv", "html", "css", "js", "ts", "jsx", "tsx", "json", "py", "go", "java", "c", "cpp", "sh", "yml", "yaml", "xml", "ini", "log"];
+
+                  if (imageExts.includes(ext)) {
+                    return (
+                      <div className="relative group max-w-full">
+                        <img
+                          src={previewUrl}
+                          alt={previewFile.Name}
+                          className="max-w-full max-h-[60vh] object-contain rounded-lg border border-solid border-slate-200 dark:border-white/10 shadow-sm"
+                        />
+                      </div>
+                    );
+                  }
+
+                  if (videoExts.includes(ext)) {
+                    return (
+                      <video
+                        src={previewUrl}
+                        controls
+                        className="max-w-full max-h-[60vh] rounded-lg border border-solid border-slate-200 dark:border-white/10 shadow-sm"
+                        autoPlay
+                      />
+                    );
+                  }
+
+                  if (audioExts.includes(ext)) {
+                    return (
+                      <div className="w-full max-w-md bg-white dark:bg-brand-card p-6 border border-solid border-slate-200 dark:border-white/5 rounded-2xl text-center shadow-md">
+                        <span className="i-ri-music-2-fill text-5xl text-emerald-500 block mx-auto mb-4 animate-pulse"></span>
+                        <h4 className="text-sm font-semibold text-slate-800 dark:text-white truncate px-4">{previewFile.Name}</h4>
+                        <audio src={previewUrl} controls className="w-full mt-6" autoPlay />
+                      </div>
+                    );
+                  }
+
+                  if (ext === "pdf") {
+                    return (
+                      <iframe
+                        src={previewUrl}
+                        title={previewFile.Name}
+                        className="w-full h-[60vh] rounded-lg border border-solid border-slate-200 dark:border-white/10 bg-white"
+                      />
+                    );
+                  }
+
+                  if (textExts.includes(ext)) {
+                    if (previewTextLoading) {
+                      return (
+                        <div className="flex flex-col items-center gap-3 py-12">
+                          <span className="i-ri-loader-4-line text-3xl text-brand-accent animate-spin"></span>
+                          <span className="text-xs text-slate-500 dark:text-gray-400">Loading text content...</span>
+                        </div>
+                      );
+                    }
+                    return (
+                      <div className="w-full h-[60vh] flex flex-col">
+                        <pre className="flex-1 p-4 bg-slate-950 text-slate-100 rounded-xl text-[11px] overflow-auto font-mono leading-relaxed border border-solid border-white/5 text-left selection:bg-brand-accent/30 selection:text-white">
+                          <code>{previewTextContent}</code>
+                        </pre>
+                      </div>
+                    );
+                  }
+
+                  // Fallback: download option
+                  return (
+                    <div className="text-center py-12 max-w-sm">
+                      <span className="i-ri-file-3-line text-6xl text-slate-300 dark:text-gray-700 block mx-auto mb-4"></span>
+                      <h4 className="text-sm font-semibold text-slate-800 dark:text-white">Preview unavailable</h4>
+                      <p className="text-xs text-slate-500 dark:text-gray-500 mt-2 mb-6 leading-relaxed">
+                        This file format cannot be previewed directly in the browser. You can download the file to view it locally.
+                      </p>
+                      <a
+                        href={previewUrl}
+                        download={previewFile.Name}
+                        className="btn-primary py-2 px-4 text-xs inline-flex items-center gap-1.5 cursor-pointer decoration-none shadow-sm hover:shadow"
+                      >
+                        <span className="i-ri-download-2-line"></span>
+                        Download File ({formatBytes(previewFile.Size)})
+                      </a>
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {/* Modal Footer */}
+              <div className="px-5 py-3.5 bg-slate-50/30 dark:bg-white/1 border-t border-solid border-slate-100 dark:border-white/5 flex justify-end gap-2">
+                <button
+                  onClick={() => {
+                    setPreviewFile(null);
+                    setPreviewTextContent("");
+                  }}
+                  className="btn-secondary py-1.5 px-4 text-xs border border-solid border-slate-200 dark:border-white/10"
+                >
+                  Close
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
     </div>
   );

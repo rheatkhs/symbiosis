@@ -83,7 +83,7 @@ function AccountsPage() {
       provider: string;
       storageLimit: string;
     },
-    registrationMode: "oauth" | "manual"
+    _registrationMode: "oauth" | "manual"
   ) => {
     setErrorMsg("");
 

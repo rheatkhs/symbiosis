@@ -1,6 +1,4 @@
-import React from "react";
 import { type Account } from "../lib/api";
-import { StorageIndicator } from "./StorageIndicator";
 
 interface RemoteCardProps {
   account: Account;

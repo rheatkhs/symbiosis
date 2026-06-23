@@ -108,6 +108,10 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ path }),
     }),
+  deleteRemoteFile: (id: string, path: string, isDir: boolean) =>
+    fetchApi<{ success: boolean }>(`/api/dash/accounts/${id}/files?path=${encodeURIComponent(path)}&isDir=${isDir}`, {
+      method: "DELETE",
+    }),
   uploadFileToRemote: (accountIdOrRemoteName: string, path: string, file: File) => {
     const headers = new Headers();
     headers.append("X-File-Path", path);
